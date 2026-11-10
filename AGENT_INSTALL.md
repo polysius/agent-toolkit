@@ -48,6 +48,19 @@ Write the block to each of these files. If a file already has a block between th
 
 If the user asked for a project install too, also write the block to `CLAUDE.md` and `AGENTS.md` in the current project folder.
 
-## 5. Verify and report
+## 5. Set the no-mistakes PR defaults
 
-Confirm that `gh-axi`, `chrome-devtools-axi`, `no-mistakes` and `gnhf` all resolve on PATH and print their `--version`. Tell the user which files you wrote the rules to. Remind them to run `no-mistakes init` once in each repo they push from.
+In `~/.no-mistakes/config.yaml` (or `$NM_HOME/config.yaml`), set these two keys, and change nothing else in the file:
+
+```yaml
+intent:
+  publish_intent: false
+pr:
+  appendix: minimal
+```
+
+If an `intent:` or `pr:` block already exists, add or update the key inside that block instead of adding a second block.
+
+## 6. Verify and report
+
+Confirm that `gh-axi`, `chrome-devtools-axi`, `no-mistakes` and `gnhf` all resolve on PATH and print their `--version`. Tell the user which files you wrote the rules to, and that you set the no-mistakes PR defaults. Remind them to run `no-mistakes init` once in each repo they push from.

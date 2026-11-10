@@ -90,6 +90,51 @@ remove_rules_block() {
   ok "rules removed from $file"
 }
 
+# ---------- no-mistakes PR defaults ----------
+# Sets "  <key>: <value>" under the top-level "<parent>:" block of a YAML file,
+# replacing an existing value or adding the key (and block) when missing.
+set_yaml_child() {
+  file="$1"; parent="$2"; key="$3"; value="$4"
+  [ -f "$file" ] || : > "$file"
+  # Read the file into memory, then insert after the block's last indented key
+  # (not after trailing comments) or replace the key when it already exists.
+  awk -v p="$parent" -v k="$key" -v v="$value" '
+    { line[NR] = $0 }
+    END {
+      entry = "  " k ": " v
+      parent_at = 0
+      for (i = 1; i <= NR; i++) if (line[i] ~ ("^" p ":[[:space:]]*(#.*)?$")) { parent_at = i; break }
+      if (!parent_at) {
+        for (i = 1; i <= NR; i++) print line[i]
+        print ""; print p ":"; print entry
+        exit
+      }
+      last_child = parent_at; existing = 0
+      for (i = parent_at + 1; i <= NR; i++) {
+        if (line[i] ~ /^[^[:space:]#]/) break
+        if (index(line[i], "  " k ":") == 1) { existing = i; break }
+        if (line[i] ~ /^[[:space:]]+[^[:space:]#]/) last_child = i
+      }
+      for (i = 1; i <= NR; i++) {
+        if (i == existing) { print entry; continue }
+        print line[i]
+        if (!existing && i == last_child) print entry
+      }
+    }
+  ' "$file" > "$TMP/yaml" && cp "$TMP/yaml" "$file"
+}
+
+set_no_mistakes_pr_defaults() {
+  nm_home="${NM_HOME:-$HOME/.no-mistakes}"
+  file="$nm_home/config.yaml"
+  if [ "$DRY_RUN" = 1 ]; then echo "  dry-run: set no-mistakes PR defaults in $file"; else
+    mkdir -p "$nm_home"
+    set_yaml_child "$file" intent publish_intent false
+    set_yaml_child "$file" pr appendix minimal
+  fi
+  ok "no-mistakes PRs: no Intent section, minimal appendix ($file)"
+}
+
 rule_targets() {
   echo "$HOME/.claude/CLAUDE.md"
   codex_home="${CODEX_HOME:-$HOME/.codex}"
@@ -161,6 +206,7 @@ if [ "$SKIP_RULES" = 0 ]; then
   get_rules > "$TMP/rules.md"
   [ -s "$TMP/rules.md" ] || die "could not load rules/AGENT_RULES.md"
   rule_targets | while IFS= read -r t; do set_rules_block "$t" "$TMP/rules.md"; done
+  set_no_mistakes_pr_defaults
 fi
 
 # ---------- verify ----------

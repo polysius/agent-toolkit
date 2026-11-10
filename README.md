@@ -17,8 +17,11 @@ One install that sets up four tools for coding agents. It also tells your agents
    - `~/.claude/CLAUDE.md` (Claude Code)
    - `~/.codex/AGENTS.md` (Codex), if `~/.codex` exists
    - `~/.gemini/GEMINI.md` (Gemini CLI), if `~/.gemini` exists
+4. Sets two no-mistakes defaults in `~/.no-mistakes/config.yaml`, so pipeline PRs follow the description rules: `intent.publish_intent: false` drops the generated Intent section, and `pr.appendix: minimal` replaces the Risk, Testing and Pipeline sections with a single risk line. The rest of the config file is left alone.
 
 The rules go between `<!-- BEGIN agent-toolkit -->` and `<!-- END agent-toolkit -->` markers. Re-running the installer updates that block in place, and anything else in those files is left alone.
+
+Besides the four tools, the rules cover how to write code (readability first, follow best practices) and how to write pull request descriptions: no Intent section, no AI attribution, no emoji, few adverbs, no dashes, no pipeline report. no-mistakes always keeps a short signature line and a hidden attestation comment at the end of a description, and those can't be turned off.
 
 **Prerequisites:** git and Node.js (with npm). On macOS and Linux you also need curl.
 

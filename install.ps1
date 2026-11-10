@@ -92,6 +92,43 @@ function Invoke-AgentToolkitInstall {
     return $targets
   }
 
+  # ---------- no-mistakes PR defaults ----------
+  # Sets "  <key>: <value>" under the top-level "<parent>:" block of a YAML file,
+  # replacing an existing value or adding the key (and block) when missing.
+  function Set-YamlChild([System.Collections.Generic.List[string]]$lines, [string]$parent, [string]$key, [string]$value) {
+    $entry = "  ${key}: $value"
+    $parentAt = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+      if ($lines[$i] -match "^${parent}:\s*(#.*)?$") { $parentAt = $i; break }
+    }
+    if ($parentAt -lt 0) {
+      $lines.Add(''); $lines.Add("${parent}:"); $lines.Add($entry)
+      return
+    }
+    # Insert after the block's last indented key, not after trailing comments.
+    $lastChild = $parentAt
+    for ($i = $parentAt + 1; $i -lt $lines.Count; $i++) {
+      if ($lines[$i] -match '^[^\s#]') { break }
+      if ($lines[$i] -match "^  ${key}:") { $lines[$i] = $entry; return }
+      if ($lines[$i] -match '^\s+[^\s#]') { $lastChild = $i }
+    }
+    $lines.Insert($lastChild + 1, $entry)
+  }
+
+  function Set-NoMistakesPrDefaults {
+    $nmHome = if ($env:NM_HOME) { $env:NM_HOME } else { Join-Path $HOME '.no-mistakes' }
+    $file = Join-Path $nmHome 'config.yaml'
+    $lines = New-Object System.Collections.Generic.List[string]
+    if (Test-Path $file) { foreach ($l in [IO.File]::ReadAllLines($file)) { $lines.Add($l) } }
+    Set-YamlChild $lines 'intent' 'publish_intent' 'false'
+    Set-YamlChild $lines 'pr' 'appendix' 'minimal'
+    Run "set no-mistakes PR defaults in $file" {
+      if (-not (Test-Path $nmHome)) { New-Item -ItemType Directory -Force $nmHome | Out-Null }
+      [IO.File]::WriteAllText($file, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
+    }
+    Ok "no-mistakes PRs: no Intent section, minimal appendix ($file)"
+  }
+
   if ($Uninstall) {
     Say 'Removing agent-toolkit rules blocks'
     foreach ($t in (Get-RuleTargets)) { Remove-RulesBlock $t }
@@ -154,6 +191,7 @@ function Invoke-AgentToolkitInstall {
     Say 'Writing agent rules'
     $rules = Get-Rules
     foreach ($t in (Get-RuleTargets)) { Set-RulesBlock $t $rules }
+    Set-NoMistakesPrDefaults
   }
 
   # ---------- verify ----------
