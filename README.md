@@ -56,7 +56,7 @@ https://raw.githubusercontent.com/polysius/agent-toolkit/main/AGENT_INSTALL.md
 | `-SkipTools` | `--skip-tools` | Only write the rules |
 | `-SkipRules` | `--skip-rules` | Only install the tools |
 | `-SkipHooks` | `--skip-hooks` | Don't install the axi SessionStart hooks |
-| `-Uninstall` | `--uninstall` | Remove the rules blocks (the tools stay installed) |
+| `-Uninstall` | `--uninstall` | Remove the rules blocks (the tools and the no-mistakes PR defaults stay) |
 | `-DryRun` | `--dry-run` | Show what would happen without changing anything |
 
 How to pass options with the one-line install:
