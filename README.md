@@ -11,7 +11,7 @@ One install that sets up four tools for coding agents. It also tells your agents
 
 ## What it does
 
-1. Installs the four tools **globally**: the three npm packages with `npm install -g`, and no-mistakes with its official installer. It also installs the GitHub CLI if it's missing, because `gh-axi` needs it.
+1. Installs the four tools **globally**: the three npm packages with `npm install -g`, and no-mistakes with its official installer (or `no-mistakes update --yes` if it's already installed). It also installs the GitHub CLI if it's missing, because `gh-axi` needs it.
 2. Runs `gh-axi setup hooks` and `chrome-devtools-axi setup hooks`, so agents get the tools' context when a session starts.
 3. Writes [the rules](rules/AGENT_RULES.md) into your **global** agent instruction files, so they apply in every folder:
    - `~/.claude/CLAUDE.md` (Claude Code)
@@ -80,6 +80,11 @@ curl -fsSL https://raw.githubusercontent.com/polysius/agent-toolkit/main/install
 
 ```powershell
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/polysius/agent-toolkit/main/install.ps1))) -Uninstall
+npm uninstall -g gh-axi chrome-devtools-axi gnhf
+```
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/polysius/agent-toolkit/main/install.sh | sh -s -- --uninstall
 npm uninstall -g gh-axi chrome-devtools-axi gnhf
 ```
 
