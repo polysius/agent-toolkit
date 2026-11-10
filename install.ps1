@@ -93,26 +93,34 @@ function Invoke-AgentToolkitInstall {
   }
 
   # ---------- no-mistakes PR defaults ----------
-  # Sets "  <key>: <value>" under the top-level "<parent>:" block of a YAML file,
+  # Sets "<key>: <value>" under the top-level "<parent>:" block of a YAML file,
   # replacing an existing value or adding the key (and block) when missing.
+  # The block's own child indentation is reused so the mapping stays valid.
   function Set-YamlChild([System.Collections.Generic.List[string]]$lines, [string]$parent, [string]$key, [string]$value) {
-    $entry = "  ${key}: $value"
     $parentAt = -1
     for ($i = 0; $i -lt $lines.Count; $i++) {
-      if ($lines[$i] -match "^${parent}:\s*(#.*)?$") { $parentAt = $i; break }
+      if ($lines[$i] -match "^${parent}:") { $parentAt = $i; break }
     }
     if ($parentAt -lt 0) {
-      $lines.Add(''); $lines.Add("${parent}:"); $lines.Add($entry)
+      $lines.Add(''); $lines.Add("${parent}:"); $lines.Add("  ${key}: $value")
+      return
+    }
+    if ($lines[$parentAt] -notmatch "^${parent}:\s*(#.*)?$") {
+      Warn "'${parent}:' has an inline value; set ${parent}.${key}: $value by hand"
       return
     }
     # Insert after the block's last indented key, not after trailing comments.
+    $indent = ''
     $lastChild = $parentAt
     for ($i = $parentAt + 1; $i -lt $lines.Count; $i++) {
       if ($lines[$i] -match '^[^\s#]') { break }
-      if ($lines[$i] -match "^  ${key}:") { $lines[$i] = $entry; return }
-      if ($lines[$i] -match '^\s+[^\s#]') { $lastChild = $i }
+      if ($lines[$i] -notmatch '^(\s+)[^\s#]') { continue }
+      if (-not $indent) { $indent = $Matches[1] }
+      if ($lines[$i] -match "^${indent}${key}:") { $lines[$i] = "${indent}${key}: $value"; return }
+      $lastChild = $i
     }
-    $lines.Insert($lastChild + 1, $entry)
+    if (-not $indent) { $indent = '  ' }
+    $lines.Insert($lastChild + 1, "${indent}${key}: $value")
   }
 
   function Set-NoMistakesPrDefaults {

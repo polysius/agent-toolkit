@@ -91,30 +91,38 @@ remove_rules_block() {
 }
 
 # ---------- no-mistakes PR defaults ----------
-# Sets "  <key>: <value>" under the top-level "<parent>:" block of a YAML file,
+# Sets "<key>: <value>" under the top-level "<parent>:" block of a YAML file,
 # replacing an existing value or adding the key (and block) when missing.
+# The block's own child indentation is reused so the mapping stays valid.
 set_yaml_child() {
   file="$1"; parent="$2"; key="$3"; value="$4"
   [ -f "$file" ] || : > "$file"
+  if grep -q "^$parent:[[:space:]]*[^[:space:]#]" "$file"; then
+    warn "'$parent:' has an inline value; set $parent.$key: $value by hand"
+    return 0
+  fi
   # Read the file into memory, then insert after the block's last indented key
   # (not after trailing comments) or replace the key when it already exists.
   awk -v p="$parent" -v k="$key" -v v="$value" '
     { line[NR] = $0 }
     END {
-      entry = "  " k ": " v
       parent_at = 0
       for (i = 1; i <= NR; i++) if (line[i] ~ ("^" p ":[[:space:]]*(#.*)?$")) { parent_at = i; break }
       if (!parent_at) {
         for (i = 1; i <= NR; i++) print line[i]
-        print ""; print p ":"; print entry
+        print ""; print p ":"; print "  " k ": " v
         exit
       }
-      last_child = parent_at; existing = 0
+      indent = ""; last_child = parent_at; existing = 0
       for (i = parent_at + 1; i <= NR; i++) {
         if (line[i] ~ /^[^[:space:]#]/) break
-        if (index(line[i], "  " k ":") == 1) { existing = i; break }
-        if (line[i] ~ /^[[:space:]]+[^[:space:]#]/) last_child = i
+        if (line[i] !~ /^[[:space:]]+[^[:space:]#]/) continue
+        if (indent == "") { match(line[i], /^[[:space:]]+/); indent = substr(line[i], 1, RLENGTH) }
+        if (index(line[i], indent k ":") == 1) { existing = i; break }
+        last_child = i
       }
+      if (indent == "") indent = "  "
+      entry = indent k ": " v
       for (i = 1; i <= NR; i++) {
         if (i == existing) { print entry; continue }
         print line[i]
