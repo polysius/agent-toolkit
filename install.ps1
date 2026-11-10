@@ -96,6 +96,7 @@ function Invoke-AgentToolkitInstall {
   # Sets "<key>: <value>" under the top-level "<parent>:" block of a YAML file,
   # replacing an existing value or adding the key (and block) when missing.
   # The block's own child indentation is reused so the mapping stays valid.
+  # Returns $true when the key was set, $false when it had to be skipped.
   function Set-YamlChild([System.Collections.Generic.List[string]]$lines, [string]$parent, [string]$key, [string]$value) {
     $parentAt = -1
     for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -103,11 +104,11 @@ function Invoke-AgentToolkitInstall {
     }
     if ($parentAt -lt 0) {
       $lines.Add(''); $lines.Add("${parent}:"); $lines.Add("  ${key}: $value")
-      return
+      return $true
     }
     if ($lines[$parentAt] -notmatch "^${parent}:\s*(#.*)?$") {
       Warn "'${parent}:' has an inline value; set ${parent}.${key}: $value by hand"
-      return
+      return $false
     }
     # Insert after the block's last indented key, not after trailing comments.
     $indent = ''
@@ -116,11 +117,12 @@ function Invoke-AgentToolkitInstall {
       if ($lines[$i] -match '^[^\s#]') { break }
       if ($lines[$i] -notmatch '^(\s+)[^\s#]') { continue }
       if (-not $indent) { $indent = $Matches[1] }
-      if ($lines[$i] -match "^${indent}${key}:") { $lines[$i] = "${indent}${key}: $value"; return }
+      if ($lines[$i] -match "^${indent}${key}:") { $lines[$i] = "${indent}${key}: $value"; return $true }
       $lastChild = $i
     }
     if (-not $indent) { $indent = '  ' }
     $lines.Insert($lastChild + 1, "${indent}${key}: $value")
+    return $true
   }
 
   function Set-NoMistakesPrDefaults {
@@ -128,13 +130,17 @@ function Invoke-AgentToolkitInstall {
     $file = Join-Path $nmHome 'config.yaml'
     $lines = New-Object System.Collections.Generic.List[string]
     if (Test-Path $file) { foreach ($l in [IO.File]::ReadAllLines($file)) { $lines.Add($l) } }
-    Set-YamlChild $lines 'intent' 'publish_intent' 'false'
-    Set-YamlChild $lines 'pr' 'appendix' 'minimal'
+    $intentSet = Set-YamlChild $lines 'intent' 'publish_intent' 'false'
+    $appendixSet = Set-YamlChild $lines 'pr' 'appendix' 'minimal'
     Run "set no-mistakes PR defaults in $file" {
       if (-not (Test-Path $nmHome)) { New-Item -ItemType Directory -Force $nmHome | Out-Null }
       [IO.File]::WriteAllText($file, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
     }
-    Ok "no-mistakes PRs: no Intent section, minimal appendix ($file)"
+    if ($intentSet -and $appendixSet) {
+      Ok "no-mistakes PRs: no Intent section, minimal appendix ($file)"
+    } else {
+      Warn "no-mistakes PR defaults only partly set in $file (see the warning above)"
+    }
   }
 
   if ($Uninstall) {

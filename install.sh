@@ -99,7 +99,7 @@ set_yaml_child() {
   [ -f "$file" ] || : > "$file"
   if grep -q "^$parent:[[:space:]]*[^[:space:]#]" "$file"; then
     warn "'$parent:' has an inline value; set $parent.$key: $value by hand"
-    return 0
+    return 1
   fi
   # Read the file into memory, then insert after the block's last indented key
   # (not after trailing comments) or replace the key when it already exists.
@@ -137,8 +137,13 @@ set_no_mistakes_pr_defaults() {
   file="$nm_home/config.yaml"
   if [ "$DRY_RUN" = 1 ]; then echo "  dry-run: set no-mistakes PR defaults in $file"; else
     mkdir -p "$nm_home"
-    set_yaml_child "$file" intent publish_intent false
-    set_yaml_child "$file" pr appendix minimal
+    all_set=1
+    set_yaml_child "$file" intent publish_intent false || all_set=0
+    set_yaml_child "$file" pr appendix minimal || all_set=0
+    if [ "$all_set" = 0 ]; then
+      warn "no-mistakes PR defaults only partly set in $file (see the warning above)"
+      return 0
+    fi
   fi
   ok "no-mistakes PRs: no Intent section, minimal appendix ($file)"
 }
