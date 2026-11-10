@@ -59,13 +59,21 @@ strip_block() {
 
 set_rules_block() {
   file="$1"; rules_file="$2"
-  {
-    strip_block "$file" | awk 'NF { last = NR } { line[NR] = $0 } END { for (i = 1; i <= last; i++) print line[i] }'
-    if [ -s "$file" ] && [ -n "$(strip_block "$file" | tr -d '[:space:]')" ]; then echo; fi
-    echo "$BEGIN"
-    cat "$rules_file"
-    echo "$END"
-  } > "$TMP/new"
+  if [ -f "$file" ] && grep -qxF "$BEGIN" "$file" && grep -qxF "$END" "$file"; then
+    awk -v b="$BEGIN" -v e="$END" -v rf="$rules_file" '
+      $0 == b { print; while ((getline l < rf) > 0) print l; skip = 1; next }
+      $0 == e { skip = 0 }
+      !skip { print }
+    ' "$file" > "$TMP/new"
+  else
+    {
+      [ -f "$file" ] && awk 'NF { last = NR } { line[NR] = $0 } END { for (i = 1; i <= last; i++) print line[i] }' "$file"
+      if [ -s "$file" ] && [ -n "$(tr -d '[:space:]' < "$file")" ]; then echo; fi
+      echo "$BEGIN"
+      cat "$rules_file"
+      echo "$END"
+    } > "$TMP/new"
+  fi
   if [ "$DRY_RUN" = 1 ]; then echo "  dry-run: write rules block to $file"; else
     mkdir -p "$(dirname "$file")"
     cp "$TMP/new" "$file"

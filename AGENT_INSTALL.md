@@ -16,7 +16,7 @@ If git or Node.js is missing, stop and ask the user to install it.
 npm install -g gh-axi chrome-devtools-axi gnhf
 ```
 
-Then install no-mistakes with its official installer:
+Then install no-mistakes. If `no-mistakes --version` succeeds, it is already installed: run `no-mistakes update --yes` instead of the installer (re-running the official Windows installer fails while the no-mistakes daemon holds the binary). Otherwise use its official installer:
 
 - Windows (PowerShell): `irm https://raw.githubusercontent.com/kunchenguid/no-mistakes/main/docs/install.ps1 | iex`
 - macOS / Linux: `curl -fsSL https://raw.githubusercontent.com/kunchenguid/no-mistakes/main/docs/install.sh | sh`
